@@ -8,6 +8,7 @@ Rectangle
     property bool animResizeEnable: false
     width : 0
     height: width
+    visible: value>0
     QtObject
     {
         id: privates
@@ -54,7 +55,8 @@ Rectangle
     }
     Behavior on x
     {
-        enabled: !privates.isFirst
+        //enabled: !privates.isFirst
+        enabled: animMoveEnable
         NumberAnimation
         {
             duration: 100;
@@ -63,7 +65,8 @@ Rectangle
 
     Behavior on y
     {
-        enabled: !privates.isFirst
+        //enabled: !privates.isFirst
+        enabled: animMoveEnable
         NumberAnimation {
             duration: 100;
         }

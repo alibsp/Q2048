@@ -2,7 +2,6 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>Block.qml</file>
-        <file>2048.qml</file>
         <file>GameOverWindow.qml</file>
     </qresource>
 </RCC>

@@ -183,14 +183,6 @@ ApplicationWindow{
                         color: "#ccc0b2"
                         radius: 1*mm
                     }
-                    /*Block
-                    {
-                        width: 23*mm//grid.cellWidth//grid.width/root.count
-                        height: width
-                        value:Math.pow(2, index+1)
-                        //color: "#ccc0b2"
-                        radius: 1*mm
-                    }*/
                     onItemAdded:
                     {
                         if(index==0)
@@ -245,8 +237,11 @@ ApplicationWindow{
         {
             table[i] = [];
             blocks[i] = [];
-            //cells[i] = [];
         }
+        cleanCells();
+        for(i=0;i<rowCount;i++)
+            for(var j=0;j<colCount;j++)
+                newBlock(i,j, 0, true);
         newGame();
     }
 
@@ -255,18 +250,15 @@ ApplicationWindow{
         app.score=0;
         for(var i=0;i<rowCount;i++)
             for(var j=0;j<colCount;j++)
-                table[i][j]=0;
-        cleanCells();
-        randomBlock();
-        randomBlock();
+                blocks[i][j].value=table[i][j]=0;
+        randomBlock(true);
+        randomBlock(true);
         moving = false;
         gameOverWindow.opacity = 0.0
         gameOverWindow.visible = false;
-        //gameOverWindow.visible = true;
-        //gameOverWindow.animateOpacity.start();
     }
 
-    function randomBlock()
+    function randomBlock(showBlock)
     {
         var emptyCells=[];
         for(var i=0;i<rowCount;i++)
@@ -279,12 +271,15 @@ ApplicationWindow{
             var value=Math.random() < 0.9 ? 2 : 4;
             i = Math.floor(emptyCells[k]/colCount);
             j = emptyCells[k]%colCount;
-            newBlock(i, j, value, true);
+            table[i][j] = value;
+            if(showBlock)
+                newBlock(i, j, value, false);
         }
         if (emptyCells.length <= 1)
             if (!isNextStep())
                 gameOver();
     }
+
 
     function isNextStep()
     {
@@ -293,28 +288,38 @@ ApplicationWindow{
                 if (table[i][j] === table[i][j+1])
                     return true;
 
-        for (var i = 0; i < rowCount - 1; ++i)
-            for (var j = 0; j < colCount; ++j)
+        for (i = 0; i < rowCount - 1; ++i)
+            for (j = 0; j < colCount; ++j)
                 if (table[i][j] === table[i+1][j])
                     return true;
 
         return false;
     }
 
-    function newBlock(i, j, value, respaun)
+    function newBlock(i, j, value, canCreate)
     {
-        var block = Qt.createQmlObject("import QtQuick 2.14;Block{}", grid);
+        var block;
+        if(canCreate)
+            block = Qt.createQmlObject("import QtQuick 2.14;Block{}", grid);
+        else
+            block = blocks[i][j] ;
         block.value=value;
-        block.animResizeEnable = respaun;
-        block.x = cells[i][j].x;
-        block.y = cells[i][j].y;
+
+        block.animResizeEnable = canCreate;
+        block.animMoveEnable = false;
+        //block.x = cells[i][j].x;
+        //block.y = cells[i][j].y;
+        var cell = cells[i][j];
+        block.x = Qt.binding(function() { return cell.x });
+        block.y = Qt.binding(function() { return cell.y });
+
         block.radius = cells[i][j].radius;
-        block.width = cells[i][j].width;
+        if(table[i][j]===0)
+            block.width = 0;
+        else
+            block.width = Qt.binding(function() { return cell.width });
         blocks[i][j] = block;
-        table[i][j] = value;
     }
-
-
 
     function move(direction)
     {
@@ -347,6 +352,7 @@ ApplicationWindow{
                         }
         return moving;
     }
+
     function moveObj(row, col, row2, col2)
     {
         var cell1 = table[row][col];
@@ -385,7 +391,6 @@ ApplicationWindow{
 
     function cleanCells()
     {
-
         for(var i=0;i<rowCount;i++)
             for(var j=0;j<colCount;j++)
             {
@@ -393,27 +398,20 @@ ApplicationWindow{
                     blocks[i][j].destroy();
                 blocks[i][j] = 0;
             }
-
     }
+
     function onAnimEnd()
     {
-        cleanCells();
-
         for (var i = 0; i < rowCount; ++i)
-        {
             for (var j = 0; j < colCount; ++j)
-            {
-                if (table[i][j]!== 0)
-                    newBlock(i, j, table[i][j], false);
-            }
-        }
-        moving = false;
-        randomBlock();
+                newBlock(i, j, table[i][j], false);
 
-        for (var i = 0; i < rowCount; ++i)
+        moving = false;
+        randomBlock(true);
+        for (i = 0; i < rowCount; ++i)
         {
             var log="";
-            for (var j = 0; j < colCount; ++j)
+            for (j = 0; j < colCount; ++j)
                 log+=" "+table[i][j].toString().padStart(3, " ");
             console.log(log);
         }
