@@ -43,6 +43,9 @@ ApplicationWindow{
 
     property var showLogs: true
     property var mute: false
+    property var highSpeedAI: true
+    property var searchDepth: 7
+
 
     ColumnLayout
     {
@@ -246,12 +249,16 @@ ApplicationWindow{
     Timer
     {
         id: aiTimer
-        interval: 1; running: false;
+        interval: highSpeedAI ? 1 : 1000
+        running: false;
         repeat: true
         onTriggered:
         {
-            nextAI(5);
-            movingTimer.start();
+            nextAI(app.searchDepth);
+            if(!app.highSpeedAI)
+                movingTimer.start();
+            else
+                onAnimEnd();
             if(gameOverWindow.visible)
                 stop();
         }
@@ -302,6 +309,7 @@ ApplicationWindow{
     function nextAI(depth)
     {
         var key=thinking(depth).key;
+        moving = false;
         move(key, false);
         //hamedMassafiMethod();
     }
@@ -367,6 +375,7 @@ ApplicationWindow{
     function randomBlock(AImode)
     {
         var emptyCells=[];
+        var value=0;
         for(var i=0;i<rowCount;i++)
             for(var j=0;j<colCount;j++)
                 if(!table[i][j])
@@ -374,7 +383,7 @@ ApplicationWindow{
         if(emptyCells.length)
         {
             var k = Math.floor(Math.random()*emptyCells.length);
-            var value=Math.random() < 0.9 ? 2 : 4;
+            value=Math.random() < 0.9 ? 2 : 4;
             i = Math.floor(emptyCells[k]/colCount);
             j = emptyCells[k]%colCount;
             table[i][j] = value;
@@ -383,7 +392,11 @@ ApplicationWindow{
         }
         if (emptyCells.length <= 1)
             if (!isNextStep() && !AImode)
+            {
                 gameOver();
+                return {"i":-1, "j":-1, "value":value}
+            }
+        return {"i":i, "j":j, "value":value}
     }
 
 
@@ -525,13 +538,18 @@ ApplicationWindow{
                 newBlock(i, j, table[i][j], false);
 
         moving = false;
-        randomBlock(false);
+        var newValue=randomBlock(false);
         if(app.showLogs)
             for (i = 0; i < rowCount; ++i)
             {
                 var log="";
                 for (j = 0; j < colCount; ++j)
-                    log+=" "+table[i][j].toString().padStart(3, " ");
+                {
+                    if(newValue.i===i && newValue.j===j)
+                        log+=" "+("("+table[i][j]+")").toString().padStart(4, " ");
+                    else
+                        log+=" "+table[i][j].toString().padStart(4, " ");
+                }
                 console.log(log);
             }
     }
