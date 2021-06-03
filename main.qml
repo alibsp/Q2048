@@ -41,6 +41,8 @@ ApplicationWindow{
     property var cells : []
     property var blocks : []
 
+    property var showLogs: true
+    property var mute: false
 
     ColumnLayout
     {
@@ -248,7 +250,7 @@ ApplicationWindow{
         repeat: true
         onTriggered:
         {
-            nextAI();
+            nextAI(5);
             movingTimer.start();
             if(gameOverWindow.visible)
                 stop();
@@ -289,13 +291,24 @@ ApplicationWindow{
         gameOverWindow.visible = false;
     }
 
-
-    function nextAI()
+    function copyMatrix(matrix)
     {
         var copyTable=[];
-        for(var i=0;i<rowCount;i++)
-            copyTable[i]=table[i].slice();
-        //var copyTable=table;
+        for(var i=0;i<matrix.length;i++)
+            copyTable[i]=matrix[i].slice();
+        return copyTable;
+    }
+    function nextAI(depth)
+    {
+        var key=thinking(depth).key;
+        move(key, false);
+    }
+
+    function thinking(depth)
+    {
+        if(depth===0)
+            return {"key": 0, "maxScore":score};
+        var copyTable=copyMatrix(table);
         var copyScore=score;
         var maxScore=0;
         var keys=[Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down];
@@ -303,11 +316,12 @@ ApplicationWindow{
         var bestKeys=[];
         for(var k=0;k<keys.length;k++)
         {
-            for(var i=0;i<rowCount;i++)
-                for(var j=0;j<colCount;j++)
-                    table[i][j]=copyTable[i][j];
+            table=copyMatrix(copyTable);
             score = copyScore;
             move(keys[k], true);
+            randomBlock(true);
+            var resutl = thinking(depth-1);
+            score = resutl.maxScore;
             if(score>=maxScore)
             {
                 maxScore = score;
@@ -315,18 +329,19 @@ ApplicationWindow{
                 key = keys[k];
             }
         }
-        for(var i=0;i<rowCount;i++)
-            for(var j=0;j<colCount;j++)
-                table[i][j]=copyTable[i][j];
+        table=copyMatrix(copyTable);
         //key = bestKeys[Math.floor(Math.random()*bestKeys.length)];
-        //table = copyTable;
         score = copyScore;
-        move(key, false);
+        //return key;
+        return {"key": key, "maxScore":maxScore};
     }
     function printKey(value)
     {
-        var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
-        console.log("key:", Object.keys(keysName).find(key => keysName[key] === value));
+        if(app.showLogs)
+        {
+            var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
+            console.log("key:", Object.keys(keysName).find(key => keysName[key] === value));
+        }
     }
 
 
@@ -452,7 +467,7 @@ ApplicationWindow{
         if (cell1 !== 0 && cell1 === cell2)
         {
             table[row2][col2] *= 2;
-            if(!AImode)
+            if(!AImode && !app.mute)
             {
                 audioPlayer.stop();
                 var value = table[row2][col2]>2048 ? 2048 :table[row2][col2];
@@ -492,6 +507,7 @@ ApplicationWindow{
 
         moving = false;
         randomBlock(false);
+        if(app.showLogs)
         for (i = 0; i < rowCount; ++i)
         {
             var log="";
