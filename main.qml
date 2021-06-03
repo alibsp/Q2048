@@ -298,10 +298,20 @@ ApplicationWindow{
             copyTable[i]=matrix[i].slice();
         return copyTable;
     }
+
     function nextAI(depth)
     {
         var key=thinking(depth).key;
         move(key, false);
+        //hamedMassafiMethod();
+    }
+
+    function hamedMassafiMethod()
+    {
+        var keys=[Qt.Key_Down, Qt.Key_Right, Qt.Key_Left, Qt.Key_Up];
+        for(var k=0;k<keys.length;k++)
+            if(move(keys[k], false))
+                break;
     }
 
     function thinking(depth)
@@ -318,16 +328,21 @@ ApplicationWindow{
         {
             table=copyMatrix(copyTable);
             score = copyScore;
-            move(keys[k], true);
-            randomBlock(true);
-            var resutl = thinking(depth-1);
-            score = resutl.maxScore;
-            if(score>=maxScore)
+            moving = false;
+            if(move(keys[k], true))
             {
-                maxScore = score;
-                bestKeys.push(keys[k]);
-                key = keys[k];
+                randomBlock(true);
+                var resutl = thinking(depth-1);
+                score = resutl.maxScore;
+                if(score>=maxScore)
+                {
+                    maxScore = score;
+                    bestKeys.push(keys[k]);
+                    key = keys[k];
+                }
             }
+            //else
+            //    console.log("Can not Move to "+keyName(keys[k])+"!!!");
         }
         table=copyMatrix(copyTable);
         //key = bestKeys[Math.floor(Math.random()*bestKeys.length)];
@@ -335,13 +350,17 @@ ApplicationWindow{
         //return key;
         return {"key": key, "maxScore":maxScore};
     }
+
+    function keyName(value)
+    {
+        var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
+        return Object.keys(keysName).find(key => keysName[key] === value);
+    }
+
     function printKey(value)
     {
         if(app.showLogs)
-        {
-            var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
-            console.log("key:", Object.keys(keysName).find(key => keysName[key] === value));
-        }
+            console.log("key:", keyName(value));
     }
 
 
@@ -460,8 +479,8 @@ ApplicationWindow{
             {
                 blocks[row][col].x = cells[row2][col2].x;
                 blocks[row][col].y = cells[row2][col2].y;
-                moving = true;
             }
+            moving = true;
         }
 
         if (cell1 !== 0 && cell1 === cell2)
@@ -508,13 +527,13 @@ ApplicationWindow{
         moving = false;
         randomBlock(false);
         if(app.showLogs)
-        for (i = 0; i < rowCount; ++i)
-        {
-            var log="";
-            for (j = 0; j < colCount; ++j)
-                log+=" "+table[i][j].toString().padStart(3, " ");
-            console.log(log);
-        }
+            for (i = 0; i < rowCount; ++i)
+            {
+                var log="";
+                for (j = 0; j < colCount; ++j)
+                    log+=" "+table[i][j].toString().padStart(3, " ");
+                console.log(log);
+            }
     }
     function gameOver()
     {
