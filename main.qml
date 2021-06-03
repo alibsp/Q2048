@@ -5,6 +5,7 @@ import Qt.labs.settings 1.1
 import QtQuick.Controls 2.12
 import QtQuick.Controls.Material 2.12
 import QtQuick.Controls.Universal 2.12
+import QtMultimedia 5.12
 ApplicationWindow{
     visible: true
     Material.theme: Material.Accent
@@ -40,18 +41,7 @@ ApplicationWindow{
     property var cells : []
     property var blocks : []
 
-    Item{
-        focus: true
-        Keys.onPressed:
-        {
-            console.log("Keys.onPressed:", event.key);
-            if(move(event.key))
-            {
-                movingTimer.start();
-            }
-            event.accepted = true;
-        }
-    }
+
     ColumnLayout
     {
         anchors.fill: parent
@@ -113,6 +103,7 @@ ApplicationWindow{
                     {
                         rowCount = colCount = 4;
                         init();
+                        itmKeys.forceActiveFocus();
                     }
                 }
             }
@@ -152,6 +143,7 @@ ApplicationWindow{
                     onClicked:
                     {
                         newGame();
+                        itmKeys.forceActiveFocus();
                     }
                 }
             }
@@ -213,7 +205,31 @@ ApplicationWindow{
     }
 
 
+    Audio {
+        id: audioPlayer
+        source: "qrc:/audio/4.mp3"
+    }
 
+    Item{
+        id: itmKeys
+        focus: true
+        Keys.onPressed:
+        {
+            console.log("Keys.onPressed:", event.key);
+            if(event.key === Qt.Key_Space)
+            {
+                if(aiTimer.running)
+                    aiTimer.stop();
+                else
+                    aiTimer.start();
+            }
+            else if(move(event.key, false))
+            {
+                movingTimer.start();
+            }
+            event.accepted = true;
+        }
+    }
     Timer
     {
         id: movingTimer
@@ -225,9 +241,23 @@ ApplicationWindow{
     }
 
 
+    Timer
+    {
+        id: aiTimer
+        interval: 1; running: false;
+        repeat: true
+        onTriggered:
+        {
+            nextAI();
+            movingTimer.start();
+            if(gameOverWindow.visible)
+                stop();
+        }
+    }
+
     Component.onCompleted:
     {
-        console.log("wh:", grid.width, grid.height)
+        //console.log("wh:", grid.width, grid.height)
         init();
     }
 
@@ -236,7 +266,8 @@ ApplicationWindow{
         for(var i=0;i<rowCount;i++)
         {
             table[i] = [];
-            blocks[i] = [];
+            if(blocks[i]===undefined)
+                blocks[i] = [];
         }
         cleanCells();
         for(i=0;i<rowCount;i++)
@@ -251,14 +282,55 @@ ApplicationWindow{
         for(var i=0;i<rowCount;i++)
             for(var j=0;j<colCount;j++)
                 blocks[i][j].value=table[i][j]=0;
-        randomBlock(true);
-        randomBlock(true);
+        randomBlock(false);
+        randomBlock(false);
         moving = false;
         gameOverWindow.opacity = 0.0
         gameOverWindow.visible = false;
     }
 
-    function randomBlock(showBlock)
+
+    function nextAI()
+    {
+        var copyTable=[];
+        for(var i=0;i<rowCount;i++)
+            copyTable[i]=table[i].slice();
+        //var copyTable=table;
+        var copyScore=score;
+        var maxScore=0;
+        var keys=[Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down];
+        var key=Qt.Key_Left;
+        var bestKeys=[];
+        for(var k=0;k<keys.length;k++)
+        {
+            for(var i=0;i<rowCount;i++)
+                for(var j=0;j<colCount;j++)
+                    table[i][j]=copyTable[i][j];
+            score = copyScore;
+            move(keys[k], true);
+            if(score>=maxScore)
+            {
+                maxScore = score;
+                bestKeys.push(keys[k]);
+                key = keys[k];
+            }
+        }
+        for(var i=0;i<rowCount;i++)
+            for(var j=0;j<colCount;j++)
+                table[i][j]=copyTable[i][j];
+        //key = bestKeys[Math.floor(Math.random()*bestKeys.length)];
+        //table = copyTable;
+        score = copyScore;
+        move(key, false);
+    }
+    function printKey(value)
+    {
+        var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
+        console.log("key:", Object.keys(keysName).find(key => keysName[key] === value));
+    }
+
+
+    function randomBlock(AImode)
     {
         var emptyCells=[];
         for(var i=0;i<rowCount;i++)
@@ -272,11 +344,11 @@ ApplicationWindow{
             i = Math.floor(emptyCells[k]/colCount);
             j = emptyCells[k]%colCount;
             table[i][j] = value;
-            if(showBlock)
+            if(!AImode)
                 newBlock(i, j, value, false);
         }
         if (emptyCells.length <= 1)
-            if (!isNextStep())
+            if (!isNextStep() && !AImode)
                 gameOver();
     }
 
@@ -307,8 +379,6 @@ ApplicationWindow{
 
         block.animResizeEnable = canCreate;
         block.animMoveEnable = false;
-        //block.x = cells[i][j].x;
-        //block.y = cells[i][j].y;
         var cell = cells[i][j];
         block.x = Qt.binding(function() { return cell.x });
         block.y = Qt.binding(function() { return cell.y });
@@ -321,20 +391,23 @@ ApplicationWindow{
         blocks[i][j] = block;
     }
 
-    function move(direction)
+    function move(direction, AImode)
     {
-        if(moving)
-            return !moving;
+        if(!AImode)
+            if(moving)
+                return !moving;
+        if(!AImode)
+            printKey(direction);
         if (direction === Qt.Key_Left || direction=== Qt.Key_Up)
             for (var i = 0; i < rowCount; ++i)
                 for (var j = 0; j < colCount; ++j)
                     for (var f = j+1; f < rowCount; ++f )
                         if (direction === Qt.Key_Left)
                         {
-                            if (!moveObj(i, f, i, j))
+                            if (!moveObj(i, f, i, j, AImode))
                                 break;
                         } else {
-                            if(!moveObj(f, i, j, i))
+                            if(!moveObj(f, i, j, i, AImode))
                                 break;
                         }
 
@@ -344,16 +417,16 @@ ApplicationWindow{
                     for (f = j-1; f >= 0; --f )
                         if (direction === Qt.Key_Right)
                         {
-                            if (!moveObj(i, f, i, j))
+                            if (!moveObj(i, f, i, j, AImode))
                                 break;
                         } else {
-                            if (!moveObj(f, i, j, i))
+                            if (!moveObj(f, i, j, i, AImode))
                                 break;
                         }
         return moving;
     }
 
-    function moveObj(row, col, row2, col2)
+    function moveObj(row, col, row2, col2, AImode)
     {
         var cell1 = table[row][col];
         var cell2 = table[row2][col2];
@@ -361,23 +434,34 @@ ApplicationWindow{
         if ((cell1 !== 0 && cell2 !== 0) && cell1 !== cell2)
             return false;
 
-        blocks[row][col].animMoveEnable = true;
+        if(!AImode)
+            blocks[row][col].animMoveEnable = true;
 
         if ( (cell1 !== 0 && cell1 === cell2) ||
                 (cell1 !== 0 && cell2 === 0) )
         {
             table[row][col] = 0;
-            blocks[row][col].x = cells[row2][col2].x;
-            blocks[row][col].y = cells[row2][col2].y;
-            moving = true;
+            if(!AImode)
+            {
+                blocks[row][col].x = cells[row2][col2].x;
+                blocks[row][col].y = cells[row2][col2].y;
+                moving = true;
+            }
         }
 
         if (cell1 !== 0 && cell1 === cell2)
         {
             table[row2][col2] *= 2;
+            if(!AImode)
+            {
+                audioPlayer.stop();
+                var value = table[row2][col2]>2048 ? 2048 :table[row2][col2];
+                audioPlayer.source = "qrc:/audio/"+value+".mp3"
+                audioPlayer.play();
+            }
             app.score += table[row2][col2];
-            if(app.score>app.bestScore)
-                app.bestScore = app.score;
+            if(!AImode)
+                app.bestScore = Math.max(app.bestScore, app.score);
             return false;
         }
 
@@ -407,7 +491,7 @@ ApplicationWindow{
                 newBlock(i, j, table[i][j], false);
 
         moving = false;
-        randomBlock(true);
+        randomBlock(false);
         for (i = 0; i < rowCount; ++i)
         {
             var log="";
@@ -422,7 +506,9 @@ ApplicationWindow{
         bestScore = Math.max(score, bestScore);
         gameOverWindow.visible = true;
         gameOverWindow.animateOpacity.start();
+        audioPlayer.stop();
+        audioPlayer.source = "qrc:/audio/Gameover.mp3"
+        audioPlayer.play();
         console.log("game over")
     }
-
 }

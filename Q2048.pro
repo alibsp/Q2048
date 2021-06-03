@@ -16,7 +16,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
-RESOURCES += qml.qrc qtquickcontrols2.conf
+RESOURCES += qml.qrc qtquickcontrols2.conf \
+    Resources/Media.qrc
 
 TRANSLATIONS += \
     Q2048_fa_IR.ts

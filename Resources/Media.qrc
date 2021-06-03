@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/audio">
+        <file>4.mp3</file>
+        <file>8.mp3</file>
+        <file>16.mp3</file>
+        <file>32.mp3</file>
+        <file>64.mp3</file>
+        <file>128.mp3</file>
+        <file>256.mp3</file>
+        <file>512.mp3</file>
+        <file>1024.mp3</file>
+        <file>2048.mp3</file>
+        <file>Gameover.mp3</file>
+    </qresource>
+</RCC>
