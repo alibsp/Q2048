@@ -43,8 +43,8 @@ ApplicationWindow{
 
     property var showLogs: true
     property var mute: false
-    property var highSpeedAI: true
-    property var searchDepth: 7
+    property var highSpeedAI: false//true
+    property var searchDepth: 5
 
 
     ColumnLayout
@@ -249,12 +249,13 @@ ApplicationWindow{
     Timer
     {
         id: aiTimer
-        interval: highSpeedAI ? 1 : 1000
+        interval: highSpeedAI ? 1 : 100
         running: false;
         repeat: true
         onTriggered:
         {
-            nextAI(app.searchDepth);
+            if(app.highSpeedAI || (!app.highSpeedAI && !moving))
+                nextAI(app.searchDepth);
             if(!app.highSpeedAI)
                 movingTimer.start();
             else
@@ -306,22 +307,28 @@ ApplicationWindow{
         return copyTable;
     }
 
+
     function nextAI(depth)
+    {
+        aldaghiMethod(depth)
+        //hamedMassafiMethod();
+    }
+    function aldaghiMethod(depth)
     {
         var key=thinking(depth).key;
         moving = false;
         move(key, false);
-        //hamedMassafiMethod();
     }
-
     function hamedMassafiMethod()
     {
         var keys=[Qt.Key_Down, Qt.Key_Right, Qt.Key_Left, Qt.Key_Up];
         for(var k=0;k<keys.length;k++)
+        {
+            moving = false;
             if(move(keys[k], false))
                 break;
+        }
     }
-
     function thinking(depth)
     {
         if(depth===0)
@@ -361,6 +368,7 @@ ApplicationWindow{
 
     function keyName(value)
     {
+        //var keysName={"↓" : Qt.Key_Left, "→" : Qt.Key_Right , "↑" : Qt.Key_Up , "↓" : Qt.Key_Down };
         var keysName={"Left" : Qt.Key_Left, "Right" : Qt.Key_Right , "Up" : Qt.Key_Up , "Down" : Qt.Key_Down };
         return Object.keys(keysName).find(key => keysName[key] === value);
     }
@@ -368,7 +376,7 @@ ApplicationWindow{
     function printKey(value)
     {
         if(app.showLogs)
-            console.log("key:", keyName(value));
+            console.log("key:", keyName(value), "- Score:", score);
     }
 
 
@@ -384,6 +392,7 @@ ApplicationWindow{
         {
             var k = Math.floor(Math.random()*emptyCells.length);
             value=Math.random() < 0.9 ? 2 : 4;
+            //value=2;
             i = Math.floor(emptyCells[k]/colCount);
             j = emptyCells[k]%colCount;
             table[i][j] = value;
@@ -440,11 +449,10 @@ ApplicationWindow{
 
     function move(direction, AImode)
     {
+        var lastScore=score;
         if(!AImode)
             if(moving)
                 return !moving;
-        if(!AImode)
-            printKey(direction);
         if (direction === Qt.Key_Left || direction=== Qt.Key_Up)
             for (var i = 0; i < rowCount; ++i)
                 for (var j = 0; j < colCount; ++j)
@@ -470,6 +478,21 @@ ApplicationWindow{
                             if (!moveObj(f, i, j, i, AImode))
                                 break;
                         }
+        if(!AImode)
+        {
+            if(!app.mute)
+            {
+                audioPlayer.stop();
+                var newScore=score - lastScore;
+                var value = Math.pow(2, Math.floor(Math.log(newScore)/Math.log(2)));
+                value = value>2048 ? 2048 :value;
+                console.log(newScore, value );
+                audioPlayer.source = "qrc:/audio/"+value+".mp3"
+                audioPlayer.play();
+            }
+
+            printKey(direction);
+        }
         return moving;
     }
 
@@ -499,13 +522,6 @@ ApplicationWindow{
         if (cell1 !== 0 && cell1 === cell2)
         {
             table[row2][col2] *= 2;
-            if(!AImode && !app.mute)
-            {
-                audioPlayer.stop();
-                var value = table[row2][col2]>2048 ? 2048 :table[row2][col2];
-                audioPlayer.source = "qrc:/audio/"+value+".mp3"
-                audioPlayer.play();
-            }
             app.score += table[row2][col2];
             if(!AImode)
                 app.bestScore = Math.max(app.bestScore, app.score);

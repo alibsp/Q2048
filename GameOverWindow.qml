@@ -17,7 +17,7 @@ Rectangle
         spacing: 5*mm
         Text {
             id: text1
-            color: "#766d65"
+            color: "#060d65"
             text: qsTr("Game Over!")
             font.bold: true
             font.family: "Verdana"
@@ -30,13 +30,13 @@ Rectangle
             id: rectangle2
             width: 40*mm
             height: 10*mm
-            color: "#8c7963"
+            color: "#0c7963"
             radius: 3
             clip: false
             Layout.alignment: Qt.AlignHCenter
             Text
             {
-                color: "#e2e1d6"
+                color: "#f2f1f6"
                 text: qsTr("Try again")
                 font.bold: true
                 font.family: "Verdana"
@@ -54,7 +54,7 @@ Rectangle
         target: gameOverRect
         properties: "opacity"
         from: 0.00
-        to: 0.80
+        to: 0.50
         duration: 1000
     }
 }
