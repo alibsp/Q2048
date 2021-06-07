@@ -30,7 +30,7 @@ ApplicationWindow{
     property var table: []
     property int rowCount : 4
     property int colCount : 4
-    property int score : 0
+    property real score : 0
     property int bestScore
 
     property var moving : false
@@ -43,9 +43,10 @@ ApplicationWindow{
 
     property var showLogs: true
     property var mute: false
-    property var highSpeedAI: false//true
+    property var highSpeedAI: true
     property var searchDepth: 5
 
+    property var numbers : [];
 
     ColumnLayout
     {
@@ -223,6 +224,13 @@ ApplicationWindow{
             console.log("Keys.onPressed:", event.key);
             if(event.key === Qt.Key_Space)
             {
+                /*if(app.highSpeedAI || (!app.highSpeedAI && !moving))
+                    nextAI(app.searchDepth);
+                if(!app.highSpeedAI)
+                    movingTimer.start();
+                else
+                    onAnimEnd();*/
+
                 if(aiTimer.running)
                     aiTimer.stop();
                 else
@@ -315,7 +323,11 @@ ApplicationWindow{
     }
     function aldaghiMethod(depth)
     {
-        var key=thinking(depth).key;
+        //printTable();
+        var result=thinking(depth);
+        var key=result.key;
+        var maxScore=result.maxScore;
+        console.log("Thinking Finish. MaxScore:",maxScore);
         moving = false;
         move(key, false);
     }
@@ -329,35 +341,139 @@ ApplicationWindow{
                 break;
         }
     }
+
     function thinking(depth)
     {
         if(depth===0)
-            return {"key": 0, "maxScore":score};
+        {
+            /* Table Pattern
+              3  2  1  0
+              4  5  6  7
+              11 10 9  8
+              12 13 14 15
+             */
+
+            var k=0;
+            var numbersIndex = [];
+            //console.log("---------------");
+            //printTable();
+            for (var i = 0; i < rowCount; ++i)
+                for (var j = 0; j < colCount; ++j)
+                {
+                    var jj=j;
+                    if(i%2===0)
+                        jj=3-j;
+                    numbersIndex.push([table[i][jj], k++]);
+                }
+
+            numbersIndex.sort(function(left, right)
+            {
+                return left[0] < right[0] ? -1 : 1;
+            });
+            var indexes = [];
+            numbers = [];
+            var w=0;
+            for (var a in numbersIndex)
+            {
+                var value = numbersIndex[a][0];
+                var position =numbersIndex[a][1];
+                if(value> 0)
+                {
+                    i=Math.floor(a/colCount);
+                    j=a%colCount;
+                    if(i%2===0)
+                        j=3-j;
+                    var ii = Math.floor(position/colCount);
+                    var jj = position%colCount;
+                    if(ii%2===0)
+                        jj=3-jj;
+                    //w+=Math.abs(ii-i)+Math.abs(jj-j);
+                    w+=(9-Math.sqrt(Math.pow(ii-i, 2)+Math.pow(jj-j,2)))*value;
+                }
+            }
+            /*if(w===0)
+                w=1;
+            else
+                w=1/w;*/
+            //console.log("w:", w, "score:", score, " final:", score*w, "\n");
+            return {"key": 0, "maxScore":w};
+        }
         var copyTable=copyMatrix(table);
         var copyScore=score;
         var maxScore=0;
-        var keys=[Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down];
+        var keys=[Qt.Key_Down, Qt.Key_Right, Qt.Key_Left, Qt.Key_Up];
         var key=Qt.Key_Left;
         var bestKeys=[];
         for(var k=0;k<keys.length;k++)
         {
+            //console.log("Depth:", depth, " Key:", keyName(keys[k]));
             table=copyMatrix(copyTable);
             score = copyScore;
             moving = false;
             if(move(keys[k], true))
             {
-                randomBlock(true);
+                //console.log("Thinking started---------Score:", score,"-----------------------");
+                var newValue=randomBlock(true);
+                //printTable(newValue);
+                //printTable();
                 var resutl = thinking(depth-1);
                 score = resutl.maxScore;
-                if(score>=maxScore)
+                //console.log("Thinking finished Depth:",depth," score", score, " MaxScore:", maxScore);
+                if(score>maxScore)
                 {
                     maxScore = score;
                     bestKeys.push(keys[k]);
                     key = keys[k];
                 }
             }
-            //else
-            //    console.log("Can not Move to "+keyName(keys[k])+"!!!");
+        }
+        table=copyMatrix(copyTable);
+        //key = bestKeys[Math.floor(Math.random()*bestKeys.length)];
+        score = copyScore;
+        //return key;
+        return {"key": key, "maxScore":maxScore};
+    }
+
+    function thinking2(depth)
+    {
+        if(depth===0)
+            return {"key": 0, "maxScore":score};
+        var copyTable=copyMatrix(table);
+        var copyScore=score;
+        var maxScore=0;
+        var keys=[Qt.Key_Down, Qt.Key_Right, Qt.Key_Left, Qt.Key_Up];
+        var key=Qt.Key_Left;
+        var bestKeys=[];
+        for(var k=0;k<keys.length;k++)
+        {
+            console.log("Thinking... Depth:", depth, " Key:", keyName(keys[k]));
+            table=copyMatrix(copyTable);
+            score = copyScore;
+            moving = false;
+            if(move(keys[k], true))
+            {
+                //randomBlock(true);
+                var emptyCells=[];
+                var value=0;
+                for(var i=0;i<rowCount;i++)
+                    for(var j=0;j<colCount;j++)
+                        if(!table[i][j])
+                        {
+                            console.log("--------------------------------");
+                            table[i][j] = 2;
+                            var newValue={"i":i, "j":j, "value":2};
+                            printTable(newValue);
+                            var resutl = thinking(depth-1);
+                            table[i][j] = 0;
+                            score = resutl.maxScore;
+                            if(score>=maxScore)
+                            {
+                                maxScore = score;
+                                bestKeys.push(keys[k]);
+                                key = keys[k];
+                            }
+                        }
+            }
         }
         table=copyMatrix(copyTable);
         //key = bestKeys[Math.floor(Math.random()*bestKeys.length)];
@@ -391,8 +507,8 @@ ApplicationWindow{
         if(emptyCells.length)
         {
             var k = Math.floor(Math.random()*emptyCells.length);
-            value=Math.random() < 0.9 ? 2 : 4;
-            //value=2;
+            //value=Math.random() < 0.9 ? 2 : 4;
+            value=2;
             i = Math.floor(emptyCells[k]/colCount);
             j = emptyCells[k]%colCount;
             table[i][j] = value;
@@ -450,6 +566,7 @@ ApplicationWindow{
     function move(direction, AImode)
     {
         var lastScore=score;
+        numbers = [];
         if(!AImode)
             if(moving)
                 return !moving;
@@ -490,7 +607,6 @@ ApplicationWindow{
                 audioPlayer.source = "qrc:/audio/"+value+".mp3"
                 audioPlayer.play();
             }
-
             printKey(direction);
         }
         return moving;
@@ -500,6 +616,8 @@ ApplicationWindow{
     {
         var cell1 = table[row][col];
         var cell2 = table[row2][col2];
+        numbers[row*colCount+col] = table[row][col] ;
+        numbers[row2*colCount+col2] = table[row2][col2] ;
 
         if ((cell1 !== 0 && cell2 !== 0) && cell1 !== cell2)
             return false;
@@ -511,6 +629,7 @@ ApplicationWindow{
                 (cell1 !== 0 && cell2 === 0) )
         {
             table[row][col] = 0;
+            numbers[row*colCount+col] = 0;
             if(!AImode)
             {
                 blocks[row][col].x = cells[row2][col2].x;
@@ -522,6 +641,7 @@ ApplicationWindow{
         if (cell1 !== 0 && cell1 === cell2)
         {
             table[row2][col2] *= 2;
+            numbers[row2*colCount+col2] = table[row2][col2] ;
             app.score += table[row2][col2];
             if(!AImode)
                 app.bestScore = Math.max(app.bestScore, app.score);
@@ -531,6 +651,7 @@ ApplicationWindow{
         if (cell1 !== 0 && cell2 === 0)
         {
             table[row2][col2] = cell1;
+            numbers[row2*colCount+col2] = table[row2][col2] ;
             return true;
         }
         return true;
@@ -547,6 +668,23 @@ ApplicationWindow{
             }
     }
 
+    function printTable(newValue)
+    {
+        if(app.showLogs)
+            for (var i = 0; i < rowCount; ++i)
+            {
+                var log="";
+                for (var j = 0; j < colCount; ++j)
+                {
+                    if(newValue!==undefined && newValue.i===i && newValue.j===j)
+                        log+=" "+("("+table[i][j]+")").toString().padStart(4, " ");
+                    else
+                        log+=" "+table[i][j].toString().padStart(4, " ");
+                }
+                console.log(log);
+            }
+    }
+
     function onAnimEnd()
     {
         for (var i = 0; i < rowCount; ++i)
@@ -555,19 +693,7 @@ ApplicationWindow{
 
         moving = false;
         var newValue=randomBlock(false);
-        if(app.showLogs)
-            for (i = 0; i < rowCount; ++i)
-            {
-                var log="";
-                for (j = 0; j < colCount; ++j)
-                {
-                    if(newValue.i===i && newValue.j===j)
-                        log+=" "+("("+table[i][j]+")").toString().padStart(4, " ");
-                    else
-                        log+=" "+table[i][j].toString().padStart(4, " ");
-                }
-                console.log(log);
-            }
+        printTable(newValue);
     }
     function gameOver()
     {
