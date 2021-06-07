@@ -43,7 +43,7 @@ ApplicationWindow{
 
     property var showLogs: true
     property var mute: false
-    property var highSpeedAI: true
+    property var highSpeedAI: false
     property var searchDepth: 5
 
     property var numbers : [];
